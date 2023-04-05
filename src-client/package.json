@@ -1,0 +1,20 @@
+{
+	"name": "client-password-cracking",
+	"version": "1.0.0",
+	"main": "index.js",
+	"license": "MIT",
+	"scripts": {
+		"build": "tsc",
+		"build:watch": "tsc -w",
+		"start": "yarn build && electron ./dist/main.js",
+		"start:watch": "electron ./dist/main.js"
+	},
+	"devDependencies": {
+		"@types/electron": "1.6.10",
+		"electron": "24.0.0",
+		"typescript": "5.0.3"
+	},
+	"dependencies": {
+		"electron-fetch": "1.9.1"
+	}
+}

@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset="UTF-8" />
+		<link rel="stylesheet" href="./libs/bulma.min.css" />
+		<link rel="stylesheet" href="./libs/coloredToasts.css" />
+		<link rel="stylesheet" href="./libs/serverLog.css" />
+		<script src="./libs/sweetalert2.js" defer></script>
+		<script src="./dist/windowHelper.js" defer></script>
+		<title>Crack Password App</title>
+	</head>
+	<body>
+		<div class="hero">
+			<div class="hero-body">
+				<section class="section">
+					<p class="title">Password Crack</p>
+					<div class="container">
+						<div class="field">
+							<label class="label">Input your hash</label>
+							<div class="control">
+								<input
+									class="input"
+									type="text"
+									id="hash-field" />
+							</div>
+						</div>
+						<div class="field">
+							<label class="label">Select your algorithm</label>
+							<div class="select">
+								<select id="algorithm-select">
+									<option>SHA256</option>
+									<option>SHA512</option>
+								</select>
+							</div>
+						</div>
+						<div class="control">
+							<button class="button is-primary" id="submit-hash">
+								Submit
+							</button>
+						</div>
+					</div>
+				</section>
+				<p class="subtitle">Server log:</p>
+				<code class="block server-out" id="out-log"></code>
+			</div>
+		</div>
+	</body>
+</html>

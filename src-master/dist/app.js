@@ -20,6 +20,16 @@ eval("\nvar __awaiter = (this && this.__awaiter) || function (thisArg, _argument
 
 /***/ }),
 
+/***/ "./master/routes/api/index.ts":
+/*!************************************!*\
+  !*** ./master/routes/api/index.ts ***!
+  \************************************/
+/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
+
+eval("\nvar __importDefault = (this && this.__importDefault) || function (mod) {\n    return (mod && mod.__esModule) ? mod : { \"default\": mod };\n};\nObject.defineProperty(exports, \"__esModule\", ({ value: true }));\nconst express_1 = __importDefault(__webpack_require__(/*! express */ \"express\"));\nconst router = express_1.default.Router();\nrouter.post(\"/hash\", (req, res) => {\n    console.log(req.body);\n    res.json({\n        success: true,\n        data: \"Hash sent successfully\",\n    });\n});\nexports[\"default\"] = router;\n\n\n//# sourceURL=webpack://cracking-password-master-server/./master/routes/api/index.ts?");
+
+/***/ }),
+
 /***/ "./master/routes/index.ts":
 /*!********************************!*\
   !*** ./master/routes/index.ts ***!
@@ -36,7 +46,17 @@ eval("\nvar __createBinding = (this && this.__createBinding) || (Object.create ?
   \**************************************/
 /***/ (function(__unused_webpack_module, exports, __webpack_require__) {
 
-eval("\nvar __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {\n    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }\n    return new (P || (P = Promise))(function (resolve, reject) {\n        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }\n        function rejected(value) { try { step(generator[\"throw\"](value)); } catch (e) { reject(e); } }\n        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }\n        step((generator = generator.apply(thisArg, _arguments || [])).next());\n    });\n};\nvar __importDefault = (this && this.__importDefault) || function (mod) {\n    return (mod && mod.__esModule) ? mod : { \"default\": mod };\n};\nObject.defineProperty(exports, \"__esModule\", ({ value: true }));\nexports.startServer = void 0;\nconst express_1 = __importDefault(__webpack_require__(/*! express */ \"express\"));\nconst startServer = () => __awaiter(void 0, void 0, void 0, function* () {\n    const app = (0, express_1.default)();\n    app.listen(5555, \"localhost\", () => {\n        console.log(\"Server is running on port 5555\");\n    });\n});\nexports.startServer = startServer;\n\n\n//# sourceURL=webpack://cracking-password-master-server/./master/routes/startServer.ts?");
+eval("\nvar __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {\n    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }\n    return new (P || (P = Promise))(function (resolve, reject) {\n        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }\n        function rejected(value) { try { step(generator[\"throw\"](value)); } catch (e) { reject(e); } }\n        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }\n        step((generator = generator.apply(thisArg, _arguments || [])).next());\n    });\n};\nvar __importDefault = (this && this.__importDefault) || function (mod) {\n    return (mod && mod.__esModule) ? mod : { \"default\": mod };\n};\nObject.defineProperty(exports, \"__esModule\", ({ value: true }));\nexports.startServer = void 0;\nconst express_1 = __importDefault(__webpack_require__(/*! express */ \"express\"));\nconst api_1 = __importDefault(__webpack_require__(/*! ./api */ \"./master/routes/api/index.ts\"));\nconst body_parser_1 = __importDefault(__webpack_require__(/*! body-parser */ \"body-parser\"));\nconst startServer = () => __awaiter(void 0, void 0, void 0, function* () {\n    const app = (0, express_1.default)();\n    app.use(body_parser_1.default.json());\n    app.use(\"/api\", api_1.default);\n    app.listen(5555, \"localhost\", () => {\n        console.log(\"Server is running on port 5555\");\n    });\n});\nexports.startServer = startServer;\n\n\n//# sourceURL=webpack://cracking-password-master-server/./master/routes/startServer.ts?");
+
+/***/ }),
+
+/***/ "body-parser":
+/*!******************************!*\
+  !*** external "body-parser" ***!
+  \******************************/
+/***/ ((module) => {
+
+module.exports = require("body-parser");
 
 /***/ }),
 
