@@ -1,0 +1,29 @@
+{
+    "compilerOptions": {
+      "lib": ["dom", "es7", "es2020"],
+      "target": "es6",
+      "module": "commonjs",
+      "moduleResolution": "node",
+      "outDir": "./dist",
+      "baseUrl": "./",
+      "allowJs": true,
+      "emitDecoratorMetadata": true,
+      "experimentalDecorators": true,
+      "allowSyntheticDefaultImports": true,
+      "esModuleInterop": true,
+      "noImplicitAny": false,
+      "noUnusedLocals": true,
+      "noUnusedParameters": true,
+      "sourceMap": true,
+      "skipLibCheck": true,
+      "resolveJsonModule": true,
+      "paths": {
+        "@utils/*": ["./master/utils/*"],
+        "@routes/*": ["./master/routes/*"],
+      }
+    },
+    "rules": {
+      "curly": [true, "ignore-same-line"]
+    }
+  }
+  
