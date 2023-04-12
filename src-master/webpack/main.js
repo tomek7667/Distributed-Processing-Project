@@ -4,11 +4,20 @@ const { merge } = require("webpack-merge");
 const baseConfig = require("./config.base.js");
 
 module.exports = merge(baseConfig, {
-	entry: "./master/app.ts",
+	entry: path.resolve(__dirname, '../master/app.ts'),
 	mode: "development",
 	output: {
 		filename: "app.js",
 		path: path.resolve(__dirname, "../dist/"),
 	},
-	plugins: [],
+	plugins: [
+		new CopyPlugin({
+			patterns: [
+				{
+					from: path.resolve(__dirname, "../master/wordlists/"),
+					to: path.resolve(__dirname, "../dist/wordlists/"),
+				}
+			],
+		}),
+	],
 });

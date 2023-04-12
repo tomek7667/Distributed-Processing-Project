@@ -7,11 +7,15 @@ import {
 	IpcMainInvokeEvent,
 } from "electron";
 import { io, Socket } from "socket.io-client";
+import { WordlistJob, wordlistJobFromJson } from "./WordlistJobInterface";
+import { readFileSync } from "fs";
+import { createHash } from "crypto";
+import { MessageType, HashAlgorithm, createMessage } from "./Message";
 
 let mainWindow: BrowserWindow;
 let socket: Socket;
 
-const IS_DEVELOPMENT = true;
+const IS_DEVELOPMENT = false;
 const SERVER_HOST = "http://localhost:5555";
 
 const createWindow = () => {
@@ -89,6 +93,11 @@ const addSocketListeners = (
 			socket.emit("lifecheck");
 		});
 
+		socket.on("job", (job: object) => {
+			const jobData = wordlistJobFromJson(job);
+			fulfillWordlistJob(jobData);
+		});
+
 		setTimeout(() => {
 			if (!isConnectionEstablished) {
 				log("Connection to the socket server timed out!", event);
@@ -97,6 +106,38 @@ const addSocketListeners = (
 			}
 		}, 5000);
 	});
+};
+
+const fulfillWordlistJob = (job: WordlistJob): void => {
+	const wordlist = getWordlist(
+		job.jobInformation.wordlist,
+		job.jobInformation.index
+	);
+	const hash = job.jobHashData.hash;
+	const algorithm = job.jobHashData.algorithm;
+	// For loop is faster than forEach
+	for (let i = 0; i < wordlist.length; i++) {
+		const word = wordlist[i];
+		const hashResult = createHash(algorithm).update(word).digest("hex");
+		if (hashResult === hash) {
+			socket.emit(
+				"data",
+				createMessage(MessageType.SolveHash, algorithm, word)
+			);
+			break;
+		}
+	}
+	socket.emit("data", createMessage(MessageType.SolveHash, algorithm, ""));
+};
+
+const getWordlist = (wordlist: string, index: number): Array<string> => {
+	const wordlistPath = path.join(
+		__dirname,
+		`../libs/wordlists/${wordlist}/${wordlist}_${index}.txt`
+	);
+	const wordlistData = readFileSync(wordlistPath, "utf-8");
+	const wordlistArray = wordlistData.split("\n").map((word) => word.trim());
+	return wordlistArray;
 };
 
 const closeSocket = () => {

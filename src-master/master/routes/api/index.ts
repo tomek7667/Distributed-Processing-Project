@@ -2,11 +2,10 @@ import express from "express";
 
 const router = express.Router();
 
-router.post("/hash", (req, res) => {
-	console.log(req.body);
+router.get("/ping", (_req, res) => {
 	res.json({
 		success: true,
-		data: "Hash sent successfully",
+		data: `pong! at ${new Date().toLocaleString()}}`,
 	});
 });
 

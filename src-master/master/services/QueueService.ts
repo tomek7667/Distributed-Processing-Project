@@ -1,6 +1,20 @@
 import { Message, MessageType } from "@domain/index";
 import { Algorithm, HashInterface } from "../common";
 import { socketServer } from "../routes";
+import { Job } from "@common/Job";
+import { readdirSync } from "fs";
+import { WordlistJobInformation } from "@common/JobInformation";
+import path from "path";
+import { createHash } from "crypto";
+
+// In milliseconds
+const availableWordlists: Map<string, number> = new Map<string, number>().set(
+	"rockyou",
+	readdirSync(path.join(__dirname, "./wordlists/rockyou")).length
+);
+
+const LIFECHECK_TIMEOUT = 2500;
+const ROUND_REFRESH_INTERVAL = 50;
 
 const hashValidationMap = new Map<string, RegExp>([
 	[Algorithm.MD5, /^[a-f0-9]{32}$/],
@@ -8,7 +22,19 @@ const hashValidationMap = new Map<string, RegExp>([
 	[Algorithm.SHA512, /^[a-f0-9]{128}$/],
 ]);
 
+interface RoundInterface {
+	hash: HashInterface;
+	round: number;
+	jobs: Set<Job>;
+	solution?: string;
+	solvedAt?: Date;
+	solvedById?: string;
+}
+
 export class QueueService {
+	private currentRound: RoundInterface | null = null;
+	private roundCounter = 0;
+
 	constructor(
 		private readonly hashQueue: Array<HashInterface>,
 		private readonly users: Set<string>
@@ -17,7 +43,7 @@ export class QueueService {
 	public initialize(): void {
 		socketServer.on("connection", (socket) => {
 			let lifecheck = true;
-			console.log(`new connection: ${socket.id}`);
+			console.log(`new client connection: ${socket.id}`);
 			this.users.add(socket.id);
 
 			socket.on("data", (data) => {
@@ -32,14 +58,13 @@ export class QueueService {
 							this.addHash({
 								algorithm: msg.algorithm,
 								hash: msg.hashOrSolution,
-								userId: msg.socketId,
+								createdById: msg.socketId,
 								createdAt: msg.createdAt,
 							});
-							socket.emit("log", "Hash added to queue");
+							socket.emit("log", "Hash has been added to queue");
 							break;
 						case MessageType.SolveHash:
-							console.log(socket.id, "solve hash");
-							console.log(msg);
+							this.solve(msg.socketId, msg.hashOrSolution);
 							break;
 						default:
 							console.log(socket.id, "Invalid message type");
@@ -52,8 +77,8 @@ export class QueueService {
 			});
 
 			socket.on("forceDisconnect", () => {
-				console.log(`disconnecting: ${socket.id}`);
-				this.users.delete(socket.id);
+				console.log(`client disconnecting: ${socket.id}`);
+				this.removeUser(socket.id);
 				socket.disconnect();
 			});
 
@@ -66,15 +91,122 @@ export class QueueService {
 				socket.emit("lifecheck");
 				setTimeout(() => {
 					if (!lifecheck) {
-						console.log(`user inactive: ${socket.id}`);
+						console.log(
+							`client inactive - disconnecting: ${socket.id}`
+						);
 						this.removeUser(socket.id);
 						socket.disconnect();
 						clearInterval(lifecheckInterval);
 					}
-				}, 2500);
-			}, 5000);
+				}, LIFECHECK_TIMEOUT);
+			}, LIFECHECK_TIMEOUT * 2);
 		});
 
+		setInterval(() => {
+			if (this.currentRound === null && this.hashQueue.length > 0) {
+				const hash = this.hashQueue.shift()!;
+				console.log(
+					`Starting new round with hash ${hash.hash} for user ${hash.createdById}`
+				);
+				socketServer.emit(
+					"log",
+					`Starting new round with hash ${hash.hash} on algorithm ${hash.algorithm}`
+				);
+				socketServer
+					.to(hash.createdById)
+					.emit("log", "[INFO]: Your hash has been started.");
+				this.currentRound = {
+					hash,
+					round: this.roundCounter++,
+					jobs: this.getWordlistJobs(hash),
+				};
+			} else if (
+				this.currentRound !== null &&
+				!this.users.has(this.currentRound.hash.createdById)
+			) {
+				console.log(
+					`User ${this.currentRound.hash.createdById} disconnected - discarding the round.`
+				);
+				socketServer.emit(
+					"log",
+					`User disconnected - discarding round ${this.currentRound.round} with hash ${this.currentRound.hash.hash}`
+				);
+				this.currentRound = null;
+			} else if (
+				this.currentRound !== null &&
+				this.currentRound.jobs.size === 0
+			) {
+				socketServer.emit(
+					"log",
+					`Round ${this.currentRound.round} with hash ${this.currentRound.hash.hash} was not able to succeed.`
+				);
+				this.currentRound = null;
+			} else if (
+				this.currentRound !== null &&
+				this.currentRound.solution === undefined
+			) {
+				const unassignedUsers = Array.from(this.users).filter(
+					(user) => {
+						return !Array.from(this.currentRound!.jobs).some(
+							(job) => job.solverId === user && !job.isDone
+						);
+					}
+				);
+				unassignedUsers.forEach((user) => {
+					const unassignedJobs = Array.from(
+						this.currentRound!.jobs
+					).filter((job) => !job.isAssigned);
+					if (unassignedJobs.length > 0) {
+						const unassignedJob = unassignedJobs[0];
+						this.currentRound.jobs.delete(unassignedJob);
+						unassignedJob.assign(user);
+						this.currentRound.jobs.add(unassignedJob);
+						socketServer
+							.to(user)
+							.emit(
+								"log",
+								`[INFO]: You have been assigned a job with id: ${unassignedJob.id}.`
+							);
+						socketServer
+							.to(user)
+							.emit("job", unassignedJob.toJSON());
+					}
+				});
+			} else if (
+				this.currentRound !== null &&
+				this.currentRound.solution !== undefined
+			) {
+				console.log(
+					`Round ${this.currentRound.round} with hash ${this.currentRound.hash.hash} has been solved by ${this.currentRound.solvedById}`
+				);
+				socketServer.emit(
+					"log",
+					`Round ${this.currentRound.round} with hash ${
+						this.currentRound.hash.hash
+					} has been solved by ${
+						this.currentRound.solvedById
+					} at ${this.currentRound.solvedAt.toLocaleString()}`
+				);
+				socketServer
+					.to(this.currentRound.hash.createdById)
+					.emit(
+						"log",
+						`[INFO]: Your hash has been solved. The solution is: ${this.currentRound.solution}`
+					);
+				if (
+					this.currentRound.hash.createdById !==
+					this.currentRound.solvedById
+				) {
+					socketServer
+						.to(this.currentRound.solvedById)
+						.emit(
+							"log",
+							`[INFO]: You have solved a hash. The solution is: ${this.currentRound.solution}`
+						);
+				}
+				this.currentRound = null;
+			}
+		}, ROUND_REFRESH_INTERVAL);
 		console.log("Queue service initialized");
 	}
 
@@ -85,7 +217,7 @@ export class QueueService {
 					`This hash is already in the queue. Submitted at ${hashInterface.createdAt.toLocaleString()}`
 				);
 			}
-			if (hashInterface.userId === hash.userId) {
+			if (hashInterface.createdById === hash.createdById) {
 				throw new Error(
 					`You already have a hash in the queue: ${
 						hashInterface.hash
@@ -93,6 +225,23 @@ export class QueueService {
 				);
 			}
 		});
+		if (
+			this.currentRound !== null &&
+			this.currentRound.hash.createdById === hash.createdById
+		) {
+			throw new Error(
+				`Current round is already assigned to you. Hash: ${this.currentRound.hash.hash}`
+			);
+		}
+		if (
+			this.currentRound !== null &&
+			this.currentRound.hash.hash === hash.hash &&
+			this.currentRound.hash.algorithm === hash.algorithm
+		) {
+			throw new Error(
+				`Current round is working already on this hash with that algorithm. Submitted at ${this.currentRound.hash.createdAt.toLocaleString()}`
+			);
+		}
 
 		if (hashValidationMap.get(hash.algorithm) === undefined) {
 			throw new Error("Algorithm not supported");
@@ -107,12 +256,74 @@ export class QueueService {
 		this.hashQueue.push(hash);
 	}
 
-	public removeUser(userId: string): void {
+	private removeUser(userId: string): void {
 		this.hashQueue.forEach((hashInterface, index) => {
-			if (hashInterface.userId === userId) {
+			if (hashInterface.createdById === userId) {
 				this.hashQueue.splice(index, 1);
 			}
 		});
+		if (this.currentRound !== null) {
+			this.currentRound.jobs.forEach((job) => {
+				if (job.solverId === userId && !job.isDone) {
+					this.currentRound!.jobs.delete(job);
+					job.unassign();
+					this.currentRound!.jobs.add(job);
+				}
+			});
+		}
+
 		this.users.delete(userId);
+	}
+
+	private getWordlistJobs(hash: HashInterface): Set<Job> {
+		// All jobs that need to be done in a round
+		const jobs = new Set<Job>();
+		availableWordlists.forEach((wordlistLength, wordlist) => {
+			for (let i = 0; i < wordlistLength; i++) {
+				const wordlistJobInformation = WordlistJobInformation.create(
+					wordlist,
+					i
+				);
+				const job = Job.create({
+					jobHashData: hash,
+					jobInformation: wordlistJobInformation,
+				});
+				jobs.add(job);
+			}
+		});
+		console.log(`Created ${jobs.size} jobs for round ${this.roundCounter}`);
+		return jobs;
+	}
+
+	private solve(id: string, solution: string): void {
+		if (this.currentRound === null) {
+			throw new Error(
+				"No round is currently running. What are you trying to solve?"
+			);
+		}
+		if (solution === "") {
+			// Mark job as done without a
+			this.currentRound.jobs.forEach((job) => {
+				// There should only be one job per user that is not done
+				if (job.solverId === id && !job.isDone) {
+					this.currentRound.jobs.delete(job);
+					job.markAsDone();
+					this.currentRound.jobs.add(job);
+				}
+			});
+			return;
+		}
+
+		const hash = createHash(this.currentRound.hash.algorithm)
+			.update(solution)
+			.digest("hex");
+
+		if (hash !== this.currentRound.hash.hash) {
+			throw new Error("Your solution is not correct!");
+		}
+
+		this.currentRound.solution = solution;
+		this.currentRound.solvedAt = new Date();
+		this.currentRound.solvedById = id;
 	}
 }

@@ -3,6 +3,6 @@ import { Algorithm } from ".";
 export interface HashInterface {
 	algorithm: Algorithm;
 	hash: string;
-	userId: string;
+	createdById: string;
 	createdAt: Date;
 }

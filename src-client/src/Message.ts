@@ -1,4 +1,4 @@
-export enum Algorithm {
+export enum HashAlgorithm {
 	MD5 = "md5",
 	SHA256 = "sha256",
 	SHA512 = "sha512",
@@ -11,7 +11,7 @@ export enum MessageType {
 
 export const createMessage = (
 	messageType: MessageType,
-	algorithm: Algorithm,
+	algorithm: HashAlgorithm,
 	hashOrSolution: string
 ): string => {
 	return `${messageType}:${algorithm}:${hashOrSolution}`;
