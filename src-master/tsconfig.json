@@ -20,6 +20,9 @@
       "paths": {
         "@utils/*": ["./master/utils/*"],
         "@routes/*": ["./master/routes/*"],
+        "@services/*": ["./master/services/*"],
+        "@domain/*": ["./master/domain/*"],
+        "@common/*": ["./master/common/*"],
       }
     },
     "rules": {

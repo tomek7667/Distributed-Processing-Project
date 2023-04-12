@@ -15,6 +15,7 @@
 		"typescript": "5.0.3"
 	},
 	"dependencies": {
-		"electron-fetch": "1.9.1"
+		"electron-fetch": "1.9.1",
+		"socket.io-client": "4.6.1"
 	}
 }

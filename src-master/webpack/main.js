@@ -4,7 +4,7 @@ const { merge } = require("webpack-merge");
 const baseConfig = require("./config.base.js");
 
 module.exports = merge(baseConfig, {
-	entry: path.resolve(__dirname, "../master/app.ts"),
+	entry: "./master/app.ts",
 	mode: "development",
 	output: {
 		filename: "app.js",

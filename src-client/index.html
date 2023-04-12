@@ -13,35 +13,57 @@
 		<div class="hero">
 			<div class="hero-body">
 				<section class="section">
+					<button class="button is-primary" id="connect-button">
+						Connect
+					</button>
+					<button
+						class="button is-danger is-hidden"
+						id="disconnect-button">
+						Disconnect
+					</button>
 					<p class="title">Password Crack</p>
-					<div class="container">
-						<div class="field">
-							<label class="label">Input your hash</label>
+					<p class="subtitle">
+						Connect in order to submit your hash and participate in
+						cracking hashes of other users.
+					</p>
+					<div id="input-hash-area" class="is-hidden">
+						<div class="container">
+							<div class="field">
+								<label class="label">Input your hash</label>
+								<div class="control">
+									<input
+										class="input"
+										type="text"
+										id="hash-field" />
+								</div>
+							</div>
+							<div class="field">
+								<label class="label"
+									>Select your algorithm</label
+								>
+								<div class="select">
+									<select id="algorithm-select">
+										<option value="md5">MD5</option>
+										<option value="sha256">SHA256</option>
+										<option value="sha512">SHA512</option>
+									</select>
+								</div>
+							</div>
 							<div class="control">
-								<input
-									class="input"
-									type="text"
-									id="hash-field" />
+								<button
+									class="button is-primary"
+									id="submit-hash">
+									Submit
+								</button>
 							</div>
-						</div>
-						<div class="field">
-							<label class="label">Select your algorithm</label>
-							<div class="select">
-								<select id="algorithm-select">
-									<option>SHA256</option>
-									<option>SHA512</option>
-								</select>
-							</div>
-						</div>
-						<div class="control">
-							<button class="button is-primary" id="submit-hash">
-								Submit
-							</button>
 						</div>
 					</div>
 				</section>
 				<p class="subtitle">Server log:</p>
 				<code class="block server-out" id="out-log"></code>
+				<button class="button is-secondary" id="clear-log">
+					Clear logs
+				</button>
 			</div>
 		</div>
 	</body>
