@@ -98,6 +98,10 @@ const addSocketListeners = (
 			fulfillWordlistJob(jobData);
 		});
 
+		socket.on("hash-complete", (message: string) => {
+			event.sender.send("hash-complete", message);
+		});
+
 		setTimeout(() => {
 			if (!isConnectionEstablished) {
 				log("Connection to the socket server timed out!", event);

@@ -76,16 +76,6 @@ export class QueueService {
 				}
 			});
 
-			socket.on("forceDisconnect", () => {
-				console.log(`client disconnecting: ${socket.id}`);
-				this.removeUser(socket.id);
-				socket.disconnect();
-			});
-
-			socket.on("lifecheck", () => {
-				lifecheck = true;
-			});
-
 			const lifecheckInterval = setInterval(() => {
 				lifecheck = false;
 				socket.emit("lifecheck");
@@ -100,6 +90,17 @@ export class QueueService {
 					}
 				}, LIFECHECK_TIMEOUT);
 			}, LIFECHECK_TIMEOUT * 2);
+
+			socket.on("forceDisconnect", () => {
+				console.log(`client disconnecting: ${socket.id}`);
+				this.removeUser(socket.id);
+				socket.disconnect();
+				clearInterval(lifecheckInterval);
+			});
+
+			socket.on("lifecheck", () => {
+				lifecheck = true;
+			});
 		});
 
 		setInterval(() => {
@@ -134,17 +135,72 @@ export class QueueService {
 				this.currentRound = null;
 			} else if (
 				this.currentRound !== null &&
-				this.currentRound.jobs.size === 0
+				this.currentRound.solution !== undefined
+			) {
+				console.log(
+					`Round ${this.currentRound.round} with hash ${this.currentRound.hash.hash} has been solved by ${this.currentRound.solvedById}`
+				);
+				socketServer.emit(
+					"log",
+					`Round ${this.currentRound.round} with hash <b>${
+						this.currentRound.hash.hash
+					}</b> has been solved by ${
+						this.currentRound.solvedById
+					} at ${this.currentRound.solvedAt.toLocaleString()}. The solution was <b>${
+						this.currentRound.solution
+					}</b>.`
+				);
+				socketServer
+					.to(this.currentRound.hash.createdById)
+					.emit(
+						"log",
+						`[INFO]: Your hash has been solved. The solution is: <b>${this.currentRound.solution}</b>`
+					);
+				socketServer
+					.to(this.currentRound.hash.createdById)
+					.emit(
+						"hash-complete",
+						`We cracked your hash!\n\nHash:\n${this.currentRound.hash.hash}\nSolution:\n${this.currentRound.solution}`
+					);
+				if (
+					this.currentRound.hash.createdById !==
+					this.currentRound.solvedById
+				) {
+					socketServer
+						.to(this.currentRound.solvedById)
+						.emit(
+							"log",
+							`[INFO]: You have solved a hash. The solution is: <b>${this.currentRound.solution}</b>`
+						);
+				}
+				this.currentRound = null;
+			} else if (
+				this.currentRound !== null &&
+				Array.from(this.currentRound.jobs).every((job) => job.isDone)
 			) {
 				socketServer.emit(
 					"log",
 					`Round ${this.currentRound.round} with hash ${this.currentRound.hash.hash} was not able to succeed.`
 				);
+				socketServer
+					.to(this.currentRound.hash.createdById)
+					.emit(
+						"hash-complete",
+						`We were not able to crack your hash.\n\nHash:\n${this.currentRound.hash.hash}`
+					);
 				this.currentRound = null;
 			} else if (
 				this.currentRound !== null &&
 				this.currentRound.solution === undefined
 			) {
+				// DEBUGGING BELOW
+				const jobsDone = Array.from(this.currentRound.jobs).filter(
+					(job) => job.isDone
+				);
+				console.log(
+					`Jobs done: ${jobsDone.length}/${this.currentRound.jobs.size}`
+				);
+				// DEBUGGING ABOVE
 				const unassignedUsers = Array.from(this.users).filter(
 					(user) => {
 						return !Array.from(this.currentRound!.jobs).some(
@@ -157,6 +213,13 @@ export class QueueService {
 						this.currentRound!.jobs
 					).filter((job) => !job.isAssigned);
 					if (unassignedJobs.length > 0) {
+						if (
+							parseInt(
+								(this.currentRound.jobs.size / 2).toString()
+							) === unassignedJobs.length
+						) {
+							console.log(`Halfway there!`);
+						}
 						const unassignedJob = unassignedJobs[0];
 						this.currentRound.jobs.delete(unassignedJob);
 						unassignedJob.assign(user);
@@ -165,46 +228,13 @@ export class QueueService {
 							.to(user)
 							.emit(
 								"log",
-								`[INFO]: You have been assigned a job with id: ${unassignedJob.id}.`
+								`<span style="color: hsl(0, 0%, 71%);">[INFO]: You have been assigned a job with id: ${unassignedJob.id}</span>`
 							);
 						socketServer
 							.to(user)
 							.emit("job", unassignedJob.toJSON());
 					}
 				});
-			} else if (
-				this.currentRound !== null &&
-				this.currentRound.solution !== undefined
-			) {
-				console.log(
-					`Round ${this.currentRound.round} with hash ${this.currentRound.hash.hash} has been solved by ${this.currentRound.solvedById}`
-				);
-				socketServer.emit(
-					"log",
-					`Round ${this.currentRound.round} with hash ${
-						this.currentRound.hash.hash
-					} has been solved by ${
-						this.currentRound.solvedById
-					} at ${this.currentRound.solvedAt.toLocaleString()}`
-				);
-				socketServer
-					.to(this.currentRound.hash.createdById)
-					.emit(
-						"log",
-						`[INFO]: Your hash has been solved. The solution is: ${this.currentRound.solution}`
-					);
-				if (
-					this.currentRound.hash.createdById !==
-					this.currentRound.solvedById
-				) {
-					socketServer
-						.to(this.currentRound.solvedById)
-						.emit(
-							"log",
-							`[INFO]: You have solved a hash. The solution is: ${this.currentRound.solution}`
-						);
-				}
-				this.currentRound = null;
 			}
 		}, ROUND_REFRESH_INTERVAL);
 		console.log("Queue service initialized");

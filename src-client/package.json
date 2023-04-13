@@ -6,7 +6,7 @@
 	"scripts": {
 		"build": "tsc",
 		"build:watch": "tsc -w",
-		"start": "yarn build && electron ./dist/main.js",
+		"start": "electron ./dist/main.js",
 		"start:watch": "electron ./dist/main.js"
 	},
 	"devDependencies": {

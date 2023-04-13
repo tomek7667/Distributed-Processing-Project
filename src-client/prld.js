@@ -7,8 +7,22 @@ contextBridge.exposeInMainWorld("api", {
 	disconnect: () => ipcRenderer.invoke("disconnect"),
 });
 
+let logCounter = 0;
+
 ipcRenderer.on("server-log", (event, arg) => {
-    document.getElementById("out-log").innerHTML = `> ${(new Date()).toLocaleTimeString()} ${(new Date()).getMilliseconds()}ms - ${arg}<br />${document.getElementById("out-log").innerHTML }`;
+	const outLoug = document.getElementById("out-log");
+	outLoug.innerHTML = `> ${new Date().toLocaleTimeString()} ${new Date().getMilliseconds()}ms - ${arg}<br />${
+		document.getElementById("out-log").innerHTML
+	}`;
+	logCounter++;
+	if (logCounter > 500) {
+		outLoug.innerHTML = "";
+		logCounter = 0;
+	}
+});
+
+ipcRenderer.on("hash-complete", (event, message) => {
+	alert(message);
 });
 
 ipcRenderer.on("disconnected", (event, arg) => {
