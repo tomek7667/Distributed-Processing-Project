@@ -42,3 +42,29 @@ export class BruteforceJobInformation implements JobInformation {
 		return new BruteforceJobInformation(knownPrefix, maxLength);
 	}
 }
+/*
+server:
+job: {
+	id: "uuid",
+	hashData: {
+		algorithm: "sha256",
+		hash: "hahahahhaahhahahahashah"
+		createdById: "1234",
+		createdAt: 27.0.7.20323
+	},
+	jobInformation: {
+		"type": "bruteforce"
+		"knownPrefix": "abc"
+		"maxLength": 8
+	},
+	createdAt: 27.0.7.20323,
+	doneAt: null
+}
+
+client:
+
+
+
+
+
+*/
