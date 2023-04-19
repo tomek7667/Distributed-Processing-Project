@@ -25,7 +25,7 @@ def main():
     wordlist_input_path = f"./in/{wordlist_file}"
     wordlist_output_path = f"./out/{wordlist_file}"
     wordlist = load_wordlist(wordlist_input_path)
-    n = int(input("Enter the number of chunks: "))
+    n = int(input("Enter the length of one chunk: "))
     if (n == 0):
         n = 1
     chunks = divide_to_chunks(wordlist, n)

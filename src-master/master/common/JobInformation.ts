@@ -1,6 +1,6 @@
 export class JobInformation {
 	type: "wordlist" | "bruteforce";
-	index: number;
+	index?: number;
 }
 
 export class WordlistJobInformation implements JobInformation {
@@ -23,4 +23,22 @@ export class WordlistJobInformation implements JobInformation {
 	}
 }
 
-// TODO: Add `BruteforceJobInformation` interface
+export class BruteforceJobInformation implements JobInformation {
+	public type: "bruteforce";
+	public knownPrefix: string;
+	public maxLength: number;
+
+	constructor(knownPrefix: string, maxLength: number) {
+		this.knownPrefix = knownPrefix;
+		this.maxLength = maxLength;
+
+		this.type = "bruteforce";
+	}
+
+	public static create(
+		knownPrefix: string,
+		maxLength: number
+	): BruteforceJobInformation {
+		return new BruteforceJobInformation(knownPrefix, maxLength);
+	}
+}

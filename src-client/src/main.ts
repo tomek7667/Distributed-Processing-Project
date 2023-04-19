@@ -134,6 +134,10 @@ const fulfillWordlistJob = (job: WordlistJob): void => {
 	socket.emit("data", createMessage(MessageType.SolveHash, algorithm, ""));
 };
 
+const fulfillBruteForceJob = (job: BruteForceJob): void => {
+	// YOUR CODE HERE
+}
+
 const getWordlist = (wordlist: string, index: number): Array<string> => {
 	const wordlistPath = path.join(
 		__dirname,
