@@ -25,6 +25,12 @@ export interface BruteForceJob extends JobInterface {
 	};
 }
 
+export interface JobResult {
+	messageType: MessageType;
+	algorithm: HashAlgorithm;
+	word: string;
+}
+
 export type JobType = "wordlist" | "bruteforce";
 
 export const jobFromJson = (

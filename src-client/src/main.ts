@@ -10,7 +10,12 @@ import { io, Socket } from "socket.io-client";
 import { readFileSync } from "fs";
 import { createHash } from "crypto";
 import { MessageType, createMessage } from "./Message";
-import { BruteForceJob, jobFromJson, WordlistJob } from "./JobInterface";
+import {
+	BruteForceJob,
+	jobFromJson,
+	JobResult,
+	WordlistJob,
+} from "./JobInterface";
 
 let mainWindow: BrowserWindow;
 let socket: Socket;
@@ -97,7 +102,15 @@ const addSocketListeners = (
 
 		socket.on("job", (jobData: object) => {
 			const job = jobFromJson(jobData);
-			fulfillJob(job);
+			const jobResult = fulfillJob(job);
+			socket.emit(
+				"data",
+				createMessage(
+					jobResult.messageType,
+					jobResult.algorithm,
+					jobResult.word
+				)
+			);
 		});
 
 		socket.on("hash-complete", (message: string) => {
@@ -114,37 +127,32 @@ const addSocketListeners = (
 	});
 };
 
-const fulfillJob = (job: WordlistJob | BruteForceJob): void => {
+const fulfillJob = (job: WordlistJob | BruteForceJob): JobResult => {
 	switch (job.jobInformation.type) {
 		case "wordlist":
-			fulfillWordlistJob(job as WordlistJob);
-			break;
+			return fulfillWordlistJob(job as WordlistJob);
 		case "bruteforce":
-			fulfillBruteForceJob(job as BruteForceJob);
-			break;
+			return fulfillBruteForceJob(job as BruteForceJob);
 	}
 };
 
-const fulfillWordlistJob = (job: WordlistJob): void => {
+export const fulfillWordlistJob = (job: WordlistJob): JobResult => {
 	const wordlist = getWordlist(
 		job.jobInformation.wordlist,
 		job.jobInformation.index
 	);
 	const hash = job.jobHashData.hash;
 	const algorithm = job.jobHashData.algorithm;
+
 	// For loop is faster than forEach
 	for (let i = 0; i < wordlist.length; i++) {
 		const word = wordlist[i];
 		const hashResult = createHash(algorithm).update(word).digest("hex");
 		if (hashResult === hash) {
-			socket.emit(
-				"data",
-				createMessage(MessageType.SolveHash, algorithm, word)
-			);
-			break;
+			return { messageType: MessageType.SolveHash, algorithm, word };
 		}
 	}
-	socket.emit("data", createMessage(MessageType.SolveHash, algorithm, ""));
+	return { messageType: MessageType.SolveHash, algorithm, word: "" };
 };
 
 /*
@@ -168,24 +176,25 @@ const fulfillWordlistJob = (job: WordlistJob): void => {
 
 	The process is repeated until the iterations are exhausted.
 */
-const fulfillBruteForceJob = (job: BruteForceJob): void => {
+export const fulfillBruteForceJob = (job: BruteForceJob): JobResult => {
 	// YOUR CODE HERE
+
 	//! if the hash will be found:*/
 	/*
-	socket.emit(
-		"data",
-		createMessage(MessageType.SolveHash, algorithm, <string solving the hash>)
-	);
+	return { messageType: MessageType.SolveHash, algorithm, word };
 	*/
+
 	//! to hash a string u use: */
 	/*
-	const hashResult = createHash(algorithm).update(<potential solve>).digest("hex");
-	if (hashResult === hash) { ...; return; }
+	const hashResult = createHash(algorithm).update(<potential solve as string>).digest("hex");
+	if (hashResult === hash) { ...; return { messageType: MessageType.SolveHash, algorithm, word }; }
 	*/
+
 	//! If you have NO solution:
 	/*
-	socket.emit("data", createMessage(MessageType.SolveHash, algorithm, ""));
+	return { messageType: MessageType.SolveHash, algorithm, word: "" };
 	*/
+	throw new Error("Not implemented");
 };
 
 const getWordlist = (wordlist: string, index: number): Array<string> => {
@@ -203,4 +212,8 @@ const closeSocket = () => {
 		socket.emit("forceDisconnect");
 		socket.close();
 	}
+};
+
+const bytesToString = (bytes: Array<number>): string => {
+	return bytes.map((byte) => String.fromCharCode(byte)).join("");
 };
