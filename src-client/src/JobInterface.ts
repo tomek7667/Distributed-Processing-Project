@@ -1,3 +1,5 @@
+import { HashAlgorithm, MessageType } from "./Message";
+
 export interface JobInterface {
 	id: string;
 	jobHashData: {

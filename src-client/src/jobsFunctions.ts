@@ -2,6 +2,7 @@ import * as path from "path";
 import { readFileSync } from "fs";
 import { createHash } from "crypto";
 import { BruteForceJob, JobResult, WordlistJob } from "./JobInterface";
+import { MessageType } from "./Message";
 
 export const MINIMUM_PRINTABLE_ASCII = 32;
 export const MAXIMUM_PRINTABLE_ASCII = 126;
