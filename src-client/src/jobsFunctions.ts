@@ -6,6 +6,8 @@ import { MessageType } from "./Message";
 
 export const MINIMUM_PRINTABLE_ASCII = 32;
 export const MAXIMUM_PRINTABLE_ASCII = 126;
+export const MAXIMUM_DISTANCE =
+	MAXIMUM_PRINTABLE_ASCII - MINIMUM_PRINTABLE_ASCII + 1;
 
 export const fulfillWordlistJob = (job: WordlistJob): JobResult => {
 	const wordlist = getWordlist(
@@ -48,24 +50,61 @@ export const fulfillWordlistJob = (job: WordlistJob): JobResult => {
 	The process is repeated until the iterations are exhausted.
 */
 export const fulfillBruteForceJob = (job: BruteForceJob): JobResult => {
-	// YOUR CODE HERE
+	const realPassword = job.jobHashData.hash;
+	const algorithm = job.jobHashData.algorithm;
 
-	//! if the hash will be found:*/
-	/*
-	return { messageType: MessageType.SolveHash, algorithm, word };
-	*/
+	let potentialPassword = job.jobInformation.start;
+	const iterations = job.jobInformation.iterations;
 
-	//! to hash a string u use: */
-	/*
-	const hashResult = createHash(algorithm).update(<potential solve as string>).digest("hex");
-	if (hashResult === hash) { ...; return { messageType: MessageType.SolveHash, algorithm, word }; }
-	*/
+	for (let i = 0; i < iterations; i++) {
+		const hashResult = createHash(algorithm)
+			.update(bytesToString(potentialPassword))
+			.digest("hex");
+		if (hashResult === realPassword) {
+			return {
+				messageType: MessageType.SolveHash,
+				algorithm,
+				word: bytesToString(potentialPassword),
+			};
+		}
+		potentialPassword = addOneToArray(potentialPassword);
+	}
 
-	//! If you have NO solution:
-	/*
+	// let idx = potentialPassword.length - 1;
+	// let code = potentialPassword[idx];
+
+	// if (
+	// 	potentialPassword.every((el: number) => el === MAXIMUM_PRINTABLE_ASCII)
+	// ) {
+	// 	let len = potentialPassword.length;
+	// 	potentialPassword = Array(len + 1).fill(MINIMUM_PRINTABLE_ASCII);
+	// }
+	// idx = potentialPassword.length - 1;
+	// code = potentialPassword[idx];
+	// if (code < MAXIMUM_PRINTABLE_ASCII) {
+	// 	potentialPassword = potentialPassword.slice(0, idx).concat(code + 1);
+	// } else {
+	// 	potentialPassword = potentialPassword
+	// 		.slice(0, idx)
+	// 		.concat(MINIMUM_PRINTABLE_ASCII);
+	// 	while (true) {
+	// 		idx--;
+	// 		if (idx < 0) {
+	// 			return {
+	// 				messageType: MessageType.SolveHash,
+	// 				algorithm,
+	// 				word: "",
+	// 			};
+	// 		}
+	// 		code = potentialPassword[idx];
+	// 		if (code < MAXIMUM_PRINTABLE_ASCII) {
+	// 			potentialPassword[idx] = code + 1;
+	// 			break;
+	// 		}
+	// 	}
+	// }
+
 	return { messageType: MessageType.SolveHash, algorithm, word: "" };
-	*/
-	throw new Error("Not implemented");
 };
 
 const getWordlist = (wordlist: string, index: number): Array<string> => {
@@ -76,4 +115,23 @@ const getWordlist = (wordlist: string, index: number): Array<string> => {
 	const wordlistData = readFileSync(wordlistPath, "utf-8");
 	const wordlistArray = wordlistData.split("\n").map((word) => word.trim());
 	return wordlistArray;
+};
+
+const bytesToString = (bytes: Array<number>): string => {
+	return bytes.map((byte) => String.fromCharCode(byte)).join("");
+};
+
+const addOneToArray = (array: Array<number>): Array<number> => {
+	if (array.every((value) => value === MAXIMUM_PRINTABLE_ASCII)) {
+		array = array.map(() => MINIMUM_PRINTABLE_ASCII);
+		array.push(MINIMUM_PRINTABLE_ASCII);
+		return array;
+	}
+	let i = array.length - 1;
+	while (array[i] === MAXIMUM_PRINTABLE_ASCII) {
+		array[i] = MINIMUM_PRINTABLE_ASCII;
+		i--;
+	}
+	array[i]++;
+	return array;
 };

@@ -1,9 +1,13 @@
 export const MINIMUM_PRINTABLE_ASCII = 32;
 export const MAXIMUM_PRINTABLE_ASCII = 126;
+export const MAXIMUM_DISTANCE =
+	MAXIMUM_PRINTABLE_ASCII - MINIMUM_PRINTABLE_ASCII + 1;
+export const EMPTY_BRUTEFORCE_JOB = [MINIMUM_PRINTABLE_ASCII];
 
-export class JobInformation {
+export interface JobInformation {
 	type: "wordlist" | "bruteforce";
 	index?: number;
+	toJSON: () => Record<string, unknown>;
 }
 
 export class WordlistJobInformation implements JobInformation {
@@ -24,25 +28,35 @@ export class WordlistJobInformation implements JobInformation {
 	): WordlistJobInformation {
 		return new WordlistJobInformation(wordlist, index);
 	}
+
+	public toJSON(): Record<string, unknown> {
+		return {
+			type: this.type,
+			wordlist: this.wordlist,
+			index: this.index,
+		};
+	}
 }
 
 export class BruteforceJobInformation implements JobInformation {
 	public type: "bruteforce";
 	public start: Array<number>;
+	public next: Array<number>;
 	public iterations: number;
 
-	constructor(start: Array<number>, iterations: number) {
+	constructor(start: Array<number>, next: Array<number>, iterations: number) {
 		this.start = start;
+		this.next = next;
 		this.iterations = iterations;
 		this.type = "bruteforce";
 	}
 
 	public static create(
-		previous: Array<number>,
+		start: Array<number>,
 		iterations: number
 	): BruteforceJobInformation {
-		const next = this.calculateNext(previous, iterations);
-		return new BruteforceJobInformation(next, iterations);
+		const next = this.calculateNext([...start], iterations);
+		return new BruteforceJobInformation(start, next, iterations);
 	}
 
 	/**
@@ -78,28 +92,34 @@ export class BruteforceJobInformation implements JobInformation {
 		previous: Array<number>,
 		iterations: number
 	): Array<number> {
-		const newArray: Array<number> = [];
-		let carry = 0;
-		let i = previous.length - 1;
-		let j = 0;
-		while (i >= 0) {
-			let value = previous[i] + carry;
-			if (j === 0) {
-				value += iterations;
-			}
-			if (value > MAXIMUM_PRINTABLE_ASCII) {
-				carry = 1;
-				value = MINIMUM_PRINTABLE_ASCII;
-			} else {
-				carry = 0;
-			}
-			newArray.unshift(value);
+		let array: Array<number> = previous;
+		for (let i = 0; i < iterations; i++) {
+			array = this.addOneToArray(array);
+		}
+		return array;
+	}
+
+	public static addOneToArray(array: Array<number>): Array<number> {
+		if (array.every((value) => value === MAXIMUM_PRINTABLE_ASCII)) {
+			array = array.map(() => MINIMUM_PRINTABLE_ASCII);
+			array.push(MINIMUM_PRINTABLE_ASCII);
+			return array;
+		}
+		let i = array.length - 1;
+		while (array[i] === MAXIMUM_PRINTABLE_ASCII) {
+			array[i] = MINIMUM_PRINTABLE_ASCII;
 			i--;
-			j++;
 		}
-		if (carry === 1) {
-			newArray.unshift(MINIMUM_PRINTABLE_ASCII);
-		}
-		return newArray;
+		array[i]++;
+		return array;
+	}
+
+	public toJSON(): Record<string, unknown> {
+		return {
+			type: this.type,
+			start: this.start,
+			next: this.next,
+			iterations: this.iterations,
+		};
 	}
 }

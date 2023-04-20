@@ -55,6 +55,7 @@ const addListeners = () => {
 	});
 
 	const connectButton = document.getElementById("connect-button")!;
+	const hostField = document.getElementById("host-field") as HTMLInputElement;
 	const disconnectButton = document.getElementById("disconnect-button")!;
 	const inputHashArea = document.getElementById("input-hash-area");
 	connectButton.addEventListener("click", async () => {

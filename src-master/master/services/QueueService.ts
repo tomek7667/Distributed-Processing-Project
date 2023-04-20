@@ -3,7 +3,11 @@ import { Algorithm, HashInterface } from "../common";
 import { socketServer } from "../routes";
 import { Job } from "@common/Job";
 import { readdirSync } from "fs";
-import { WordlistJobInformation } from "@common/JobInformation";
+import {
+	BruteforceJobInformation,
+	EMPTY_BRUTEFORCE_JOB,
+	WordlistJobInformation,
+} from "@common/JobInformation";
 import path from "path";
 import { createHash } from "crypto";
 
@@ -15,6 +19,8 @@ const availableWordlists: Map<string, number> = new Map<string, number>().set(
 
 const LIFECHECK_TIMEOUT = 2500;
 const ROUND_REFRESH_INTERVAL = 50;
+const WORDLIST_ITERATION_AMOUNT = 300000;
+const MAXIMUM_BRUTEFORCE_JOBS_AMOUNT = 500;
 
 const hashValidationMap = new Map<string, RegExp>([
 	[Algorithm.MD5, /^[a-f0-9]{32}$/],
@@ -28,7 +34,9 @@ interface RoundInterface {
 	jobs: Set<Job>;
 	solution?: string;
 	solvedAt?: Date;
+	bruteforceLastArray?: Array<number>;
 	solvedById?: string;
+	debugLog?: string;
 }
 
 export class QueueService {
@@ -104,6 +112,7 @@ export class QueueService {
 		});
 
 		setInterval(() => {
+			const previousDebugLog = this.currentRound?.debugLog;
 			if (this.currentRound === null && this.hashQueue.length > 0) {
 				const hash = this.hashQueue.shift()!;
 				console.log(
@@ -119,8 +128,10 @@ export class QueueService {
 				this.currentRound = {
 					hash,
 					round: this.roundCounter++,
-					jobs: this.getWordlistJobs(hash),
+					jobs: new Set<Job>(),
+					bruteforceLastArray: EMPTY_BRUTEFORCE_JOB,
 				};
+				this.currentRound.jobs = this.getJobs(hash);
 			} else if (
 				this.currentRound !== null &&
 				!this.users.has(this.currentRound.hash.createdById)
@@ -193,14 +204,10 @@ export class QueueService {
 				this.currentRound !== null &&
 				this.currentRound.solution === undefined
 			) {
-				// DEBUGGING BELOW
 				const jobsDone = Array.from(this.currentRound.jobs).filter(
 					(job) => job.isDone
 				);
-				console.log(
-					`Jobs done: ${jobsDone.length}/${this.currentRound.jobs.size}`
-				);
-				// DEBUGGING ABOVE
+				this.currentRound.debugLog = `Jobs done: ${jobsDone.length}/${this.currentRound.jobs.size}`;
 				const unassignedUsers = Array.from(this.users).filter(
 					(user) => {
 						return !Array.from(this.currentRound!.jobs).some(
@@ -235,6 +242,12 @@ export class QueueService {
 							.emit("job", unassignedJob.toJSON());
 					}
 				});
+			}
+			if (
+				this.currentRound?.debugLog &&
+				previousDebugLog !== this.currentRound?.debugLog
+			) {
+				console.log(this.currentRound?.debugLog);
 			}
 		}, ROUND_REFRESH_INTERVAL);
 		console.log("Queue service initialized");
@@ -305,8 +318,17 @@ export class QueueService {
 		this.users.delete(userId);
 	}
 
-	private getWordlistJobs(hash: HashInterface): Set<Job> {
+	private getJobs(hash: HashInterface): Set<Job> {
 		// All jobs that need to be done in a round
+		const wordlistJobs = this.getWordlistJobs(hash);
+		const bruteforceJobs = this.getBruteforceJobs(hash);
+		const jobs = new Set<Job>();
+		wordlistJobs.forEach((job) => jobs.add(job));
+		bruteforceJobs.forEach((job) => jobs.add(job));
+		return jobs;
+	}
+
+	private getWordlistJobs(hash: HashInterface): Set<Job> {
 		const jobs = new Set<Job>();
 		availableWordlists.forEach((wordlistLength, wordlist) => {
 			for (let i = 0; i < wordlistLength; i++) {
@@ -321,7 +343,30 @@ export class QueueService {
 				jobs.add(job);
 			}
 		});
-		console.log(`Created ${jobs.size} jobs for round ${this.roundCounter}`);
+		console.log(
+			`Created ${jobs.size} wordlist jobs for round ${this.roundCounter}`
+		);
+		return jobs;
+	}
+
+	private getBruteforceJobs(hash: HashInterface): Set<Job> {
+		const jobs = new Set<Job>();
+		for (let i = 0; i < MAXIMUM_BRUTEFORCE_JOBS_AMOUNT; i++) {
+			const bruteforceJobInformation = BruteforceJobInformation.create(
+				this.currentRound.bruteforceLastArray,
+				WORDLIST_ITERATION_AMOUNT
+			);
+			this.currentRound.bruteforceLastArray =
+				bruteforceJobInformation.next;
+			const job = Job.create({
+				jobHashData: hash,
+				jobInformation: bruteforceJobInformation,
+			});
+			jobs.add(job);
+		}
+		console.log(
+			`Created ${jobs.size} bruteforce jobs for round ${this.roundCounter}`
+		);
 		return jobs;
 	}
 

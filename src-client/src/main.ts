@@ -139,7 +139,3 @@ const closeSocket = () => {
 		socket.close();
 	}
 };
-
-const bytesToString = (bytes: Array<number>): string => {
-	return bytes.map((byte) => String.fromCharCode(byte)).join("");
-};

@@ -76,7 +76,7 @@ export class Job {
 		return {
 			id: this.id,
 			jobHashData: this.jobHashData,
-			jobInformation: this.jobInformation,
+			jobInformation: this.jobInformation.toJSON(),
 			createdAt: this.createdAt,
 			doneAt: this.solvedAt,
 		};

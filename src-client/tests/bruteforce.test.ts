@@ -5,6 +5,7 @@ import {
 	fulfillBruteForceJob,
 	MINIMUM_PRINTABLE_ASCII,
 	MAXIMUM_PRINTABLE_ASCII,
+	MAXIMUM_DISTANCE,
 } from "../src/jobsFunctions";
 
 const exampleResult = "s3cr3t";
@@ -38,21 +39,19 @@ describe("fulfillBruteForceJob", () => {
 	it("should return a JobResult that finds a password (start.length < result.length)", () => {
 		const job: BruteForceJob = {
 			...exampleBruteforceJob,
+			jobHashData: {
+				...exampleBruteforceJob.jobHashData,
+				hash: "aeee905d909f505f8189c9a7950b9b95",
+			},
 			jobInformation: {
 				type: "bruteforce",
-				start: [
-					MAXIMUM_PRINTABLE_ASCII,
-					MAXIMUM_PRINTABLE_ASCII,
-					MAXIMUM_PRINTABLE_ASCII - 1,
-					MAXIMUM_PRINTABLE_ASCII - 1,
-				],
-				iterations: 10000,
+				start: [32, 102, 50, 77],
+				iterations: 300000,
 			},
 		};
-
 		const result = fulfillBruteForceJob(job);
 		// Array of MINIMUM_PRINTABLE_ASCII of length 5 is "     "
-		expect(result.word).toBe("     ");
+		expect(result.word).toBe("!!!e");
 	});
 
 	it("should return an empty JobResult that doesn't find a password", () => {
@@ -64,7 +63,7 @@ describe("fulfillBruteForceJob", () => {
 				iterations: 1,
 			},
 		};
-		
+
 		const result = fulfillBruteForceJob(job);
 		expect(result.word).toBe("");
 	});
