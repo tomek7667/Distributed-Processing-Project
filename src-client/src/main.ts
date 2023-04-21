@@ -5,6 +5,11 @@ import {
 	ipcMain,
 	IpcMainEvent,
 	IpcMainInvokeEvent,
+	Notification,
+	dialog,
+	clipboard,
+	Menu,
+	Tray,
 } from "electron";
 import { io, Socket } from "socket.io-client";
 import { createMessage } from "./Message";
@@ -15,24 +20,50 @@ import {
 	WordlistJob,
 } from "./JobInterface";
 import { fulfillBruteForceJob, fulfillWordlistJob } from "./jobsFunctions";
-import { Worker } from "worker_threads";
 
 let mainWindow: BrowserWindow;
 let socket: Socket;
+let tray: Tray = null;
+let labelText: string;
 
 const IS_DEVELOPMENT = false;
 let SERVER_HOST = "http://0.0.0.0:5555";
 
 const createWindow = () => {
-	console.log(path.join(__dirname, "../prld.js"));
+	tray = new Tray(path.join(__dirname, "./libs/icon.png"));
+	const contextMenu = Menu.buildFromTemplate([
+		{
+			label: "Show window",
+			click: () => {
+				mainWindow.show();
+			},
+		},
+		{
+			label: "Run in the background",
+			click: () => {
+				mainWindow.hide();
+			},
+		},
+		{
+			label: "Quit",
+			click: () => {
+				app.quit();
+			},
+		},
+	]);
+	tray.setToolTip("Password Cracker");
+	tray.setContextMenu(contextMenu);
+
 	mainWindow = new BrowserWindow({
 		width: 1270,
 		height: 720,
 		webPreferences: {
 			nodeIntegration: true,
 			contextIsolation: true,
+			nodeIntegrationInWorker: true,
 			preload: path.join(__dirname, "../prld.js"),
 		},
+		icon: path.join(__dirname, "./libs/icon.png"),
 	});
 
 	mainWindow.loadFile(path.join(__dirname, "../index.html"));
@@ -70,10 +101,14 @@ ipcMain.handle("connect", async (event, host): Promise<boolean> => {
 	return result;
 });
 
-ipcMain.handle("disconnect", async (event, args): Promise<boolean> => {
+ipcMain.handle("disconnect", async (event, _args): Promise<boolean> => {
 	log("Disconnecting from the socket server...", event);
 	closeSocket();
 	return true;
+});
+
+ipcMain.handle("get-version", async (_event, _args): Promise<string> => {
+	return process.env.npm_package_version;
 });
 
 const log = (message: string, event: IpcMainEvent | IpcMainInvokeEvent) => {
@@ -83,7 +118,7 @@ const log = (message: string, event: IpcMainEvent | IpcMainInvokeEvent) => {
 const addSocketListeners = (
 	event: IpcMainEvent | IpcMainInvokeEvent
 ): Promise<boolean> => {
-	return new Promise((resolve, reject) => {
+	return new Promise((resolve, _reject) => {
 		let isConnectionEstablished = false;
 		socket.on("connect", () => {
 			log("Connected to the socket server!", event);
@@ -111,7 +146,36 @@ const addSocketListeners = (
 		});
 
 		socket.on("hash-complete", (message: string) => {
-			event.sender.send("hash-complete", message);
+			enum ButtonClicked {
+				Copy,
+				Close,
+			}
+
+			new Notification({
+				title: "Password Cracker",
+				body: message,
+				urgency: "critical",
+			}).show();
+			const result = dialog.showMessageBoxSync({
+				title: "Password Cracker",
+				type: "info",
+				message,
+				buttons: ["Copy to clipboard", "Close"],
+				defaultId: 0,
+				cancelId: 1,
+			});
+			switch (result) {
+				case ButtonClicked.Copy:
+					console.log(message.split("\n"));
+					// last line is the solution
+					const solution = message
+						.split("\n")
+						.filter((line) => line !== "")
+						.pop();
+					// copy the solution to the clipboard
+					clipboard.writeText(solution);
+					break;
+			}
 		});
 
 		setTimeout(() => {

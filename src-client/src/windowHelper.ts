@@ -23,6 +23,7 @@ interface api {
 	submitHash: (message: string) => Promise<boolean>;
 	connect: (host: string) => Promise<boolean>;
 	disconnect: () => Promise<boolean>;
+	getVersion: () => Promise<string>;
 }
 
 interface WindowInterface extends Window {
@@ -91,7 +92,15 @@ const addListeners = () => {
 	});
 };
 
-window.addEventListener("DOMContentLoaded", () => {
+const generateTitle = async (): Promise<string> => {
+	const _window = window as unknown as WindowInterface;
+	const version = await _window.api.getVersion();
+	return `Password Cracker v${version}`;
+};
+
+window.addEventListener("DOMContentLoaded", async () => {
+	const titleElement = document.getElementById("p-title");
 	console.log("DOM loaded");
+	titleElement.innerText = await generateTitle();
 	addListeners();
 });

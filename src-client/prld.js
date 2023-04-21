@@ -5,6 +5,7 @@ contextBridge.exposeInMainWorld("api", {
 	submitHash: (arg) => ipcRenderer.invoke("submit-hash", arg),
 	connect: (host) => ipcRenderer.invoke("connect", host),
 	disconnect: () => ipcRenderer.invoke("disconnect"),
+	getVersion: () => ipcRenderer.invoke("get-version"),
 });
 
 let logCounter = 0;
@@ -21,6 +22,9 @@ ipcRenderer.on("server-log", (event, arg) => {
 	}
 });
 
+/**
+ * @deprecated Notifications are directly called from the main process
+ */
 ipcRenderer.on("hash-complete", (event, message) => {
 	alert(message);
 });
