@@ -55,8 +55,11 @@ export const fulfillBruteForceJob = (job: BruteForceJob): JobResult => {
 
 	let potentialPassword = job.jobInformation.start;
 	const iterations = job.jobInformation.iterations;
+	
+	let idx = potentialPassword.length - 1;
 
 	for (let i = 0; i < iterations; i++) {
+
 		const hashResult = createHash(algorithm)
 			.update(bytesToString(potentialPassword))
 			.digest("hex");
@@ -67,42 +70,20 @@ export const fulfillBruteForceJob = (job: BruteForceJob): JobResult => {
 				word: bytesToString(potentialPassword),
 			};
 		}
-		potentialPassword = addOneToArray(potentialPassword);
+
+		if (potentialPassword.every((elem: number) => elem === MAXIMUM_PRINTABLE_ASCII)) {
+			let len = potentialPassword.length;
+			potentialPassword = Array(len + 1).fill(MINIMUM_PRINTABLE_ASCII);
+		}
+		
+		idx = potentialPassword.length - 1;
+		while (potentialPassword[idx] >= MAXIMUM_PRINTABLE_ASCII) {
+			potentialPassword[idx] = MINIMUM_PRINTABLE_ASCII;
+			idx--;
+		}
+		potentialPassword[idx]++;
+
 	}
-
-	// let idx = potentialPassword.length - 1;
-	// let code = potentialPassword[idx];
-
-	// if (
-	// 	potentialPassword.every((el: number) => el === MAXIMUM_PRINTABLE_ASCII)
-	// ) {
-	// 	let len = potentialPassword.length;
-	// 	potentialPassword = Array(len + 1).fill(MINIMUM_PRINTABLE_ASCII);
-	// }
-	// idx = potentialPassword.length - 1;
-	// code = potentialPassword[idx];
-	// if (code < MAXIMUM_PRINTABLE_ASCII) {
-	// 	potentialPassword = potentialPassword.slice(0, idx).concat(code + 1);
-	// } else {
-	// 	potentialPassword = potentialPassword
-	// 		.slice(0, idx)
-	// 		.concat(MINIMUM_PRINTABLE_ASCII);
-	// 	while (true) {
-	// 		idx--;
-	// 		if (idx < 0) {
-	// 			return {
-	// 				messageType: MessageType.SolveHash,
-	// 				algorithm,
-	// 				word: "",
-	// 			};
-	// 		}
-	// 		code = potentialPassword[idx];
-	// 		if (code < MAXIMUM_PRINTABLE_ASCII) {
-	// 			potentialPassword[idx] = code + 1;
-	// 			break;
-	// 		}
-	// 	}
-	// }
 
 	return { messageType: MessageType.SolveHash, algorithm, word: "" };
 };
@@ -119,19 +100,4 @@ const getWordlist = (wordlist: string, index: number): Array<string> => {
 
 const bytesToString = (bytes: Array<number>): string => {
 	return bytes.map((byte) => String.fromCharCode(byte)).join("");
-};
-
-const addOneToArray = (array: Array<number>): Array<number> => {
-	if (array.every((value) => value === MAXIMUM_PRINTABLE_ASCII)) {
-		array = array.map(() => MINIMUM_PRINTABLE_ASCII);
-		array.push(MINIMUM_PRINTABLE_ASCII);
-		return array;
-	}
-	let i = array.length - 1;
-	while (array[i] === MAXIMUM_PRINTABLE_ASCII) {
-		array[i] = MINIMUM_PRINTABLE_ASCII;
-		i--;
-	}
-	array[i]++;
-	return array;
 };
