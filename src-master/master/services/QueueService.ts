@@ -21,6 +21,7 @@ const LIFECHECK_TIMEOUT = 2500;
 const ROUND_REFRESH_INTERVAL = 50;
 const WORDLIST_ITERATION_AMOUNT = 300000;
 const MAXIMUM_BRUTEFORCE_JOBS_AMOUNT = 500;
+const LOG_LAST_JOB = true;
 
 const hashValidationMap = new Map<string, RegExp>([
 	[Algorithm.MD5, /^[a-f0-9]{32}$/],
@@ -242,6 +243,30 @@ export class QueueService {
 							.emit("job", unassignedJob.toJSON());
 					}
 				});
+
+				/**
+				 * Unassign jobs that take too long for a user to solve.
+				 */
+				const assignedJobs = Array.from(this.currentRound.jobs).filter(
+					(job) => job.isAssigned
+				);
+				assignedJobs.forEach((job) => {
+					if (job.isTimedOut) {
+						const timedOutJob = job;
+						socketServer
+							.to(timedOutJob.solverId)
+							.emit(
+								"log",
+								`<span style="color: hsl(0, 0%, 71%);">[INFO]: Your job with id: ${timedOutJob.id} has timed out. It has been unassigned.</span>`
+							);
+						console.log(
+							`Job ${timedOutJob.id} has timed out. It has been unassigned.`
+						);
+						this.currentRound.jobs.delete(timedOutJob);
+						timedOutJob.unassign();
+						this.currentRound.jobs.add(timedOutJob);
+					}
+				});
 			}
 			if (
 				this.currentRound?.debugLog &&
@@ -363,6 +388,11 @@ export class QueueService {
 				jobInformation: bruteforceJobInformation,
 			});
 			jobs.add(job);
+		}
+		if (LOG_LAST_JOB) {
+			console.log(
+				Array.from(jobs.values())[Array.from(jobs.values()).length - 1]
+			);
 		}
 		console.log(
 			`Created ${jobs.size} bruteforce jobs for round ${this.roundCounter}`

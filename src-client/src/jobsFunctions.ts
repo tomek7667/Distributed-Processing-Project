@@ -55,11 +55,10 @@ export const fulfillBruteForceJob = (job: BruteForceJob): JobResult => {
 
 	let potentialPassword = job.jobInformation.start;
 	const iterations = job.jobInformation.iterations;
-	
+
 	let idx = potentialPassword.length - 1;
 
 	for (let i = 0; i < iterations; i++) {
-
 		const hashResult = createHash(algorithm)
 			.update(bytesToString(potentialPassword))
 			.digest("hex");
@@ -71,18 +70,21 @@ export const fulfillBruteForceJob = (job: BruteForceJob): JobResult => {
 			};
 		}
 
-		if (potentialPassword.every((elem: number) => elem === MAXIMUM_PRINTABLE_ASCII)) {
+		if (
+			potentialPassword.every(
+				(elem: number) => elem === MAXIMUM_PRINTABLE_ASCII
+			)
+		) {
 			let len = potentialPassword.length;
 			potentialPassword = Array(len + 1).fill(MINIMUM_PRINTABLE_ASCII);
 		}
-		
+
 		idx = potentialPassword.length - 1;
 		while (potentialPassword[idx] >= MAXIMUM_PRINTABLE_ASCII) {
 			potentialPassword[idx] = MINIMUM_PRINTABLE_ASCII;
 			idx--;
 		}
 		potentialPassword[idx]++;
-
 	}
 
 	return { messageType: MessageType.SolveHash, algorithm, word: "" };

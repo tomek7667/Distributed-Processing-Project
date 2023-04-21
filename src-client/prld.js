@@ -3,7 +3,7 @@ const { ipcRenderer, contextBridge } = require("electron");
 // Adds an object 'api' to the global window object:
 contextBridge.exposeInMainWorld("api", {
 	submitHash: (arg) => ipcRenderer.invoke("submit-hash", arg),
-	connect: () => ipcRenderer.invoke("connect"),
+	connect: (host) => ipcRenderer.invoke("connect", host),
 	disconnect: () => ipcRenderer.invoke("disconnect"),
 });
 
@@ -33,8 +33,3 @@ ipcRenderer.on("disconnected", (event, arg) => {
 	connectButton.classList.remove("is-hidden");
 	inputHashArea.classList.add("is-hidden");
 });
-
-// ipcRenderer.on("connection", (event, arg) => {
-// 	console.log(event);
-// 	console.log(arg);
-// });

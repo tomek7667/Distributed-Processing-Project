@@ -9,6 +9,8 @@ enum MessageType {
 	SolveHash,
 }
 
+const settings = {};
+
 const createMessage = (
 	messageType: MessageType,
 	algorithm: HashAlgorithm,
@@ -19,7 +21,7 @@ const createMessage = (
 
 interface api {
 	submitHash: (message: string) => Promise<boolean>;
-	connect: () => Promise<boolean>;
+	connect: (host: string) => Promise<boolean>;
 	disconnect: () => Promise<boolean>;
 }
 
@@ -60,11 +62,14 @@ const addListeners = () => {
 	const inputHashArea = document.getElementById("input-hash-area");
 	connectButton.addEventListener("click", async () => {
 		connectButton.classList.add("is-loading");
-		const result = await _window.api.connect();
+		hostField.classList.add("is-hidden");
+		const result = await _window.api.connect(hostField.value);
 		if (!result) {
 			connectButton.classList.remove("is-loading");
+			hostField.classList.remove("is-hidden");
 			return;
 		}
+
 		connectButton.classList.remove("is-loading");
 		disconnectButton.classList.remove("is-hidden");
 		connectButton.classList.add("is-hidden");
@@ -72,9 +77,11 @@ const addListeners = () => {
 	});
 	disconnectButton.addEventListener("click", async () => {
 		connectButton.classList.add("is-loading");
+		hostField.classList.remove("is-hidden");
 		const result = await _window.api.disconnect();
 		if (!result) {
 			connectButton.classList.remove("is-loading");
+			hostField.classList.add("is-hidden");
 			return;
 		}
 		connectButton.classList.remove("is-loading");

@@ -2,6 +2,9 @@ import { randomUUID } from "crypto";
 import { HashInterface } from "./HashInterface";
 import { JobInformation, WordlistJobInformation } from "./JobInformation";
 
+// 1 minute timeout
+const JOB_DEFAULT_TIMEOUT = 60 * 1000;
+
 interface JobData {
 	id: string;
 	jobHashData: HashInterface;
@@ -20,6 +23,8 @@ export class Job {
 	public jobHashData: HashInterface;
 	public jobInformation: JobInformation;
 	public createdAt: Date;
+	public timeout: number = JOB_DEFAULT_TIMEOUT;
+	public timeoutTime?: Date;
 	public solvedAt?: Date;
 	public solverId?: string;
 
@@ -60,8 +65,13 @@ export class Job {
 		return this.solverId !== undefined && !this.isDone;
 	}
 
+	public get isTimedOut(): boolean {
+		return this.timeoutTime !== undefined && this.timeoutTime < new Date();
+	}
+
 	public assign(solverId: string): void {
 		this.solverId = solverId;
+		this.timeoutTime = new Date(Date.now() + this.timeout);
 	}
 
 	public unassign(): void {
@@ -79,6 +89,7 @@ export class Job {
 			jobInformation: this.jobInformation.toJSON(),
 			createdAt: this.createdAt,
 			doneAt: this.solvedAt,
+			timeoutTime: this.timeoutTime,
 		};
 	}
 }

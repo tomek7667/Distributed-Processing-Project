@@ -15,12 +15,13 @@ import {
 	WordlistJob,
 } from "./JobInterface";
 import { fulfillBruteForceJob, fulfillWordlistJob } from "./jobsFunctions";
+import { Worker } from "worker_threads";
 
 let mainWindow: BrowserWindow;
 let socket: Socket;
 
 const IS_DEVELOPMENT = false;
-const SERVER_HOST = "http://localhost:5555";
+let SERVER_HOST = "http://0.0.0.0:5555";
 
 const createWindow = () => {
 	console.log(path.join(__dirname, "../prld.js"));
@@ -57,8 +58,13 @@ ipcMain.handle("submit-hash", async (event, args): Promise<boolean> => {
 	return true;
 });
 
-ipcMain.handle("connect", async (event, args): Promise<boolean> => {
+ipcMain.handle("connect", async (event, host): Promise<boolean> => {
 	log("Connecting to the socket server...", event);
+	if (!host) {
+		log("No host provided!", event);
+		return false;
+	}
+	SERVER_HOST = host;
 	socket = io(SERVER_HOST);
 	const result = await addSocketListeners(event);
 	return result;
@@ -99,15 +105,9 @@ const addSocketListeners = (
 
 		socket.on("job", (jobData: object) => {
 			const job = jobFromJson(jobData);
-			const jobResult = fulfillJob(job);
-			socket.emit(
-				"data",
-				createMessage(
-					jobResult.messageType,
-					jobResult.algorithm,
-					jobResult.word
-				)
-			);
+			runInBackground(() => {
+				fulfillJob(job);
+			});
 		});
 
 		socket.on("hash-complete", (message: string) => {
@@ -124,13 +124,20 @@ const addSocketListeners = (
 	});
 };
 
-const fulfillJob = (job: WordlistJob | BruteForceJob): JobResult => {
+const fulfillJob = (job: WordlistJob | BruteForceJob): void => {
+	let result: JobResult;
 	switch (job.jobInformation.type) {
 		case "wordlist":
-			return fulfillWordlistJob(job as WordlistJob);
+			result = fulfillWordlistJob(job as WordlistJob);
+			break;
 		case "bruteforce":
-			return fulfillBruteForceJob(job as BruteForceJob);
+			result = fulfillBruteForceJob(job as BruteForceJob);
+			break;
 	}
+	socket.emit(
+		"data",
+		createMessage(result.messageType, result.algorithm, result.word)
+	);
 };
 
 const closeSocket = () => {
@@ -138,4 +145,8 @@ const closeSocket = () => {
 		socket.emit("forceDisconnect");
 		socket.close();
 	}
+};
+
+const runInBackground = async (fn: Function) => {
+	Promise.all([fn()]);
 };

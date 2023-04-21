@@ -5,6 +5,9 @@ import { Server } from "socket.io";
 import { createServer } from "http";
 import { project } from "@services/index";
 
+const port = 5555;
+const host = "0.0.0.0";
+
 export let socketServer: Server;
 
 export const startServer = async (): Promise<void> => {
@@ -18,7 +21,7 @@ export const startServer = async (): Promise<void> => {
 
 	project.initialize();
 
-	httpServer.listen(5555, "localhost", () => {
+	httpServer.listen(port, host, () => {
 		console.log("Server is running on port 5555");
 	});
 };

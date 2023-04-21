@@ -1,12 +1,7 @@
 import { BruteForceJob, JobInterface } from "../src/JobInterface";
 import { HashAlgorithm } from "../src/Message";
 import { randomUUID } from "crypto";
-import {
-	fulfillBruteForceJob,
-	MINIMUM_PRINTABLE_ASCII,
-	MAXIMUM_PRINTABLE_ASCII,
-	MAXIMUM_DISTANCE,
-} from "../src/jobsFunctions";
+import { fulfillBruteForceJob } from "../src/jobsFunctions";
 
 const exampleResult = "s3cr3t";
 const exampleHash = "a4d80eac9ab26a4a2da04125bc2c096a";
