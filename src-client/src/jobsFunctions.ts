@@ -93,7 +93,7 @@ export const fulfillBruteForceJob = (job: BruteForceJob): JobResult => {
 const getWordlist = (wordlist: string, index: number): Array<string> => {
 	const wordlistPath = path.join(
 		__dirname,
-		`../libs/wordlists/${wordlist}/${wordlist}_${index}.txt`
+		`../../libs/wordlists/${wordlist}/${wordlist}_${index}.txt`
 	);
 	const wordlistData = readFileSync(wordlistPath, "utf-8");
 	const wordlistArray = wordlistData.split("\n").map((word) => word.trim());

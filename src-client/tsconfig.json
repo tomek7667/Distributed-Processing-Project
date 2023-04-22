@@ -7,7 +7,7 @@
         "skipLibCheck": true,
         "noImplicitAny": true,
         "sourceMap": true,
-        "outDir": "dist",
+        "outDir": "ts-dist",
         "baseUrl": ".",
         "moduleResolution": "node",
         "resolveJsonModule": true,
@@ -16,6 +16,6 @@
         },
     },
     "include": [
-        "src/**/*"
+        "./src/**/*",
     ],
 }

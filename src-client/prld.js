@@ -23,7 +23,7 @@ ipcRenderer.on("server-log", (event, arg) => {
 });
 
 ipcRenderer.on("perform-bruteforce-job", (event, arg) => {
-	const worker = new Worker("./dist/bruteforce-worker.js");
+	const worker = new Worker("./ts-dist/bruteforce-worker.js");
 	worker.postMessage(arg);
 	worker.onmessage = (jobResult) => {
 		ipcRenderer.invoke("solve-job", jobResult.data);

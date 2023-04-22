@@ -29,7 +29,8 @@ const IS_DEVELOPMENT = false;
 let SERVER_HOST = "http://0.0.0.0:5555";
 
 const createWindow = () => {
-	tray = new Tray(path.join(__dirname, "./libs/icon.png"));
+	console.log("Dirname:", __dirname);
+	tray = new Tray(path.join(__dirname, "../../libs/icon.png"));
 	const contextMenu = Menu.buildFromTemplate([
 		{
 			label: "Show window",
@@ -50,8 +51,15 @@ const createWindow = () => {
 			},
 		},
 	]);
-	tray.setToolTip(`Password Cracker v${process.env.npm_package_version}`);
+	tray.setToolTip(
+		`Password Cracker v${
+			process.env.npm_package_version ?? app.getVersion()
+		}`
+	);
 	tray.setContextMenu(contextMenu);
+	tray.on("double-click", () => {
+		mainWindow.show();
+	});
 
 	mainWindow = new BrowserWindow({
 		width: 1270,
@@ -65,9 +73,11 @@ const createWindow = () => {
 		icon: path.join(__dirname, "./libs/icon.png"),
 	});
 
-	mainWindow.loadFile(path.join(__dirname, "../index.html"));
+	mainWindow.loadFile(path.join(__dirname, "../../index.html"));
 	if (IS_DEVELOPMENT) {
 		mainWindow.webContents.openDevTools();
+	} else {
+		mainWindow.setMenu(null);
 	}
 };
 
@@ -107,7 +117,8 @@ ipcMain.handle("disconnect", async (event, _args): Promise<boolean> => {
 });
 
 ipcMain.handle("get-version", async (_event, _args): Promise<string> => {
-	return process.env.npm_package_version;
+	const v = process.env.npm_package_version ?? app.getVersion();
+	return v;
 });
 
 ipcMain.handle("solve-job", async (event, result: JobResult) => {
