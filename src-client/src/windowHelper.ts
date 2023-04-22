@@ -99,8 +99,10 @@ const generateTitle = async (): Promise<string> => {
 };
 
 window.addEventListener("DOMContentLoaded", async () => {
-	const titleElement = document.getElementById("p-title");
+	const pTitleElement = document.getElementById("p-title");
+	const tTitleElement = document.getElementById("t-title");
 	console.log("DOM loaded");
-	titleElement.innerText = await generateTitle();
+	pTitleElement.innerText = await generateTitle();
+	tTitleElement.innerText = await generateTitle();
 	addListeners();
 });

@@ -19,12 +19,11 @@ import {
 	JobResult,
 	WordlistJob,
 } from "./JobInterface";
-import { fulfillBruteForceJob, fulfillWordlistJob } from "./jobsFunctions";
+import { fulfillWordlistJob } from "./jobsFunctions";
 
 let mainWindow: BrowserWindow;
 let socket: Socket;
 let tray: Tray = null;
-let labelText: string;
 
 const IS_DEVELOPMENT = false;
 let SERVER_HOST = "http://0.0.0.0:5555";
@@ -51,7 +50,7 @@ const createWindow = () => {
 			},
 		},
 	]);
-	tray.setToolTip("Password Cracker");
+	tray.setToolTip(`Password Cracker v${process.env.npm_package_version}`);
 	tray.setContextMenu(contextMenu);
 
 	mainWindow = new BrowserWindow({
@@ -111,6 +110,13 @@ ipcMain.handle("get-version", async (_event, _args): Promise<string> => {
 	return process.env.npm_package_version;
 });
 
+ipcMain.handle("solve-job", async (event, result: JobResult) => {
+	socket.emit(
+		"data",
+		createMessage(result.messageType, result.algorithm, result.word)
+	);
+});
+
 const log = (message: string, event: IpcMainEvent | IpcMainInvokeEvent) => {
 	event.sender.send("server-log", message);
 };
@@ -140,9 +146,7 @@ const addSocketListeners = (
 
 		socket.on("job", (jobData: object) => {
 			const job = jobFromJson(jobData);
-			runInBackground(() => {
-				fulfillJob(job);
-			});
+			fulfillJob(job, event as IpcMainEvent);
 		});
 
 		socket.on("hash-complete", (message: string) => {
@@ -156,6 +160,17 @@ const addSocketListeners = (
 				body: message,
 				urgency: "critical",
 			}).show();
+
+			const cracked = message.includes("We cracked your hash!");
+			if (!cracked) {
+				dialog.showMessageBoxSync({
+					title: "Password Cracker",
+					type: "error",
+					message,
+					buttons: ["Close"],
+				});
+				return;
+			}
 			const result = dialog.showMessageBoxSync({
 				title: "Password Cracker",
 				type: "info",
@@ -166,12 +181,12 @@ const addSocketListeners = (
 			});
 			switch (result) {
 				case ButtonClicked.Copy:
-					console.log(message.split("\n"));
 					// last line is the solution
 					const solution = message
 						.split("\n")
 						.filter((line) => line !== "")
 						.pop();
+
 					// copy the solution to the clipboard
 					clipboard.writeText(solution);
 					break;
@@ -188,20 +203,23 @@ const addSocketListeners = (
 	});
 };
 
-const fulfillJob = (job: WordlistJob | BruteForceJob): void => {
+const fulfillJob = (
+	job: WordlistJob | BruteForceJob,
+	event: IpcMainEvent
+): void => {
 	let result: JobResult;
 	switch (job.jobInformation.type) {
 		case "wordlist":
 			result = fulfillWordlistJob(job as WordlistJob);
+			socket.emit(
+				"data",
+				createMessage(result.messageType, result.algorithm, result.word)
+			);
 			break;
 		case "bruteforce":
-			result = fulfillBruteForceJob(job as BruteForceJob);
+			event.sender.send("perform-bruteforce-job", job);
 			break;
 	}
-	socket.emit(
-		"data",
-		createMessage(result.messageType, result.algorithm, result.word)
-	);
 };
 
 const closeSocket = () => {
@@ -209,8 +227,4 @@ const closeSocket = () => {
 		socket.emit("forceDisconnect");
 		socket.close();
 	}
-};
-
-const runInBackground = async (fn: Function) => {
-	Promise.all([fn()]);
 };

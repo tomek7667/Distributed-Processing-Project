@@ -22,11 +22,13 @@ ipcRenderer.on("server-log", (event, arg) => {
 	}
 });
 
-/**
- * @deprecated Notifications are directly called from the main process
- */
-ipcRenderer.on("hash-complete", (event, message) => {
-	alert(message);
+ipcRenderer.on("perform-bruteforce-job", (event, arg) => {
+	const worker = new Worker("./dist/bruteforce-worker.js");
+	worker.postMessage(arg);
+	worker.onmessage = (jobResult) => {
+		ipcRenderer.invoke("solve-job", jobResult.data);
+		worker.terminate();
+	};
 });
 
 ipcRenderer.on("disconnected", (event, arg) => {
