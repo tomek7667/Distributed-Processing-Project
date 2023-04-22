@@ -1,8 +1,6 @@
 # Password Cracker
 
-## Setting up
-
-### Client
+## Installing Client
 
 Go to [`releases`](https://github.com/tomek7667/Password-Cracker/releases) page, and go ahead download the appropriate version and install it.
 
