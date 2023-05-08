@@ -18,9 +18,9 @@ const availableWordlists: Map<string, number> = new Map<string, number>().set(
 );
 
 const LIFECHECK_TIMEOUT = 2500;
-const ROUND_REFRESH_INTERVAL = 50;
-const WORDLIST_ITERATION_AMOUNT = 300000;
-const MAXIMUM_BRUTEFORCE_JOBS_AMOUNT = 500;
+const ROUND_REFRESH_INTERVAL = 25;
+const BRUTEFORCE_AMOUNT_PER_JOB = 1_000_000;
+const MAXIMUM_BRUTEFORCE_JOBS_AMOUNT = 3_000;
 const LOG_LAST_JOB = true;
 
 const hashValidationMap = new Map<string, RegExp>([
@@ -379,7 +379,7 @@ export class QueueService {
 		for (let i = 0; i < MAXIMUM_BRUTEFORCE_JOBS_AMOUNT; i++) {
 			const bruteforceJobInformation = BruteforceJobInformation.create(
 				this.currentRound.bruteforceLastArray,
-				WORDLIST_ITERATION_AMOUNT
+				BRUTEFORCE_AMOUNT_PER_JOB
 			);
 			this.currentRound.bruteforceLastArray =
 				bruteforceJobInformation.next;
