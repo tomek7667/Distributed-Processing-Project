@@ -17,7 +17,7 @@ const availableWordlists: Map<string, number> = new Map<string, number>().set(
 	readdirSync(path.join(__dirname, "./wordlists/rockyou")).length
 );
 
-const LIFECHECK_TIMEOUT = 2500;
+const LIFECHECK_TIMEOUT = 10_000;
 const ROUND_REFRESH_INTERVAL = 25;
 const BRUTEFORCE_AMOUNT_PER_JOB = 1_000_000;
 const MAXIMUM_BRUTEFORCE_JOBS_AMOUNT = 3_000;
@@ -43,6 +43,7 @@ interface RoundInterface {
 export class QueueService {
 	private currentRound: RoundInterface | null = null;
 	private roundCounter = 0;
+	private isCalculating = false;
 
 	constructor(
 		private readonly hashQueue: Array<HashInterface>,
@@ -89,7 +90,7 @@ export class QueueService {
 				lifecheck = false;
 				socket.emit("lifecheck");
 				setTimeout(() => {
-					if (!lifecheck) {
+					if (!lifecheck && !this.isCalculating) {
 						console.log(
 							`client inactive - disconnecting: ${socket.id}`
 						);
@@ -376,6 +377,8 @@ export class QueueService {
 
 	private getBruteforceJobs(hash: HashInterface): Set<Job> {
 		const jobs = new Set<Job>();
+		const startTime = Date.now();
+		this.isCalculating = true;
 		for (let i = 0; i < MAXIMUM_BRUTEFORCE_JOBS_AMOUNT; i++) {
 			const bruteforceJobInformation = BruteforceJobInformation.create(
 				this.currentRound.bruteforceLastArray,
@@ -394,9 +397,13 @@ export class QueueService {
 				Array.from(jobs.values())[Array.from(jobs.values()).length - 1]
 			);
 		}
+		const endTime = Date.now();
 		console.log(
-			`Created ${jobs.size} bruteforce jobs for round ${this.roundCounter}`
+			`Created ${jobs.size} bruteforce jobs for round ${
+				this.roundCounter
+			} - took ${endTime - startTime}ms`
 		);
+		this.isCalculating = false;
 		return jobs;
 	}
 
