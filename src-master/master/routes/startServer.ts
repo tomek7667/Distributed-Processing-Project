@@ -19,7 +19,7 @@ export const startServer = async (): Promise<void> => {
 	const httpServer = createServer(app);
 	socketServer = new Server(httpServer);
 
-	project.initialize();
+	await project.initialize();
 
 	httpServer.listen(port, host, () => {
 		console.log("Server is running on port 5555");

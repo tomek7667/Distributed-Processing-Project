@@ -1,3 +1,5 @@
+import { createHash } from "crypto";
+
 export const MINIMUM_PRINTABLE_ASCII = 32;
 export const MAXIMUM_PRINTABLE_ASCII = 126;
 export const MAXIMUM_DISTANCE =
@@ -6,6 +8,7 @@ export const EMPTY_BRUTEFORCE_JOB = [MINIMUM_PRINTABLE_ASCII];
 
 export interface JobInformation {
 	type: "wordlist" | "bruteforce";
+	jobHash: string;
 	index?: number;
 	toJSON: () => Record<string, unknown>;
 }
@@ -15,11 +18,23 @@ export class WordlistJobInformation implements JobInformation {
 	public wordlist: string;
 	public index: number;
 
+	public jobHash: string;
+
 	constructor(wordlist: string, index: number) {
 		this.wordlist = wordlist;
 		this.index = index;
-
 		this.type = "wordlist";
+
+		this.jobHash = WordlistJobInformation.calculateJobHash(
+			this.wordlist,
+			this.index
+		);
+	}
+
+	public static calculateJobHash(wordlist: string, index: number): string {
+		return createHash("MD5")
+			.update(JSON.stringify({ type: "wordlist", wordlist, index }))
+			.digest("hex");
 	}
 
 	public static create(
@@ -36,6 +51,17 @@ export class WordlistJobInformation implements JobInformation {
 			index: this.index,
 		};
 	}
+
+	public static fromJSON(data: Record<string, unknown>): JobInformation {
+		if (data.type !== "wordlist") {
+			throw new Error("Invalid job type");
+		}
+
+		return new WordlistJobInformation(
+			data.wordlist as string,
+			data.index as number
+		);
+	}
 }
 
 export class BruteforceJobInformation implements JobInformation {
@@ -44,11 +70,24 @@ export class BruteforceJobInformation implements JobInformation {
 	public next: Array<number>;
 	public iterations: number;
 
+	public jobHash: string;
+
 	constructor(start: Array<number>, next: Array<number>, iterations: number) {
 		this.start = start;
 		this.next = next;
 		this.iterations = iterations;
 		this.type = "bruteforce";
+
+		this.jobHash = BruteforceJobInformation.calculateJobHash(
+			this.start,
+			this.iterations
+		);
+	}
+
+	public static calculateJobHash(start: Array<number>, iterations: number) {
+		return createHash("MD5")
+			.update(JSON.stringify({ type: "bruteforce", iterations, start }))
+			.digest("hex");
 	}
 
 	public static create(
@@ -121,5 +160,17 @@ export class BruteforceJobInformation implements JobInformation {
 			next: this.next,
 			iterations: this.iterations,
 		};
+	}
+
+	public static fromJSON(data: Record<string, unknown>): JobInformation {
+		if (data.type !== "bruteforce") {
+			throw new Error("Invalid job type");
+		}
+
+		return new BruteforceJobInformation(
+			data.start as Array<number>,
+			data.next as Array<number>,
+			data.iterations as number
+		);
 	}
 }

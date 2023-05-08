@@ -1,6 +1,10 @@
 import { randomUUID } from "crypto";
 import { HashInterface } from "./HashInterface";
-import { JobInformation, WordlistJobInformation } from "./JobInformation";
+import {
+	BruteforceJobInformation,
+	JobInformation,
+	WordlistJobInformation,
+} from "./JobInformation";
 
 // 1 minute timeout
 const JOB_DEFAULT_TIMEOUT = 60 * 1000;
@@ -91,5 +95,24 @@ export class Job {
 			doneAt: this.solvedAt,
 			timeoutTime: this.timeoutTime,
 		};
+	}
+
+	public static fromJSON(data: Record<string, unknown>): Job {
+		return new Job({
+			id: data.id as string,
+			jobHashData: data.jobHashData as HashInterface,
+			jobInformation:
+				data.jobInformation["type"] === "wordlist"
+					? WordlistJobInformation.fromJSON(
+							data.jobInformation as Record<string, unknown>
+					  )
+					: data.jobInformation["type"] === "bruteforce"
+					? BruteforceJobInformation.fromJSON(
+							data.jobInformation as Record<string, unknown>
+					  )
+					: (data.jobInformation as JobInformation),
+			createdAt: new Date(data.createdAt as string),
+			solvedAt: data.doneAt ? new Date(data.doneAt as string) : undefined,
+		});
 	}
 }

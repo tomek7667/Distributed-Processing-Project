@@ -10,6 +10,7 @@ import {
 } from "@common/JobInformation";
 import path from "path";
 import { createHash } from "crypto";
+import { CacheRepositoryInterface } from "master/repositories";
 
 // In milliseconds
 const availableWordlists: Map<string, number> = new Map<string, number>().set(
@@ -22,6 +23,7 @@ const ROUND_REFRESH_INTERVAL = 25;
 const BRUTEFORCE_AMOUNT_PER_JOB = 1_000_000;
 const MAXIMUM_BRUTEFORCE_JOBS_AMOUNT = 3_000;
 const LOG_LAST_JOB = true;
+const CLEAR_CACHE_ON_START = false;
 
 const hashValidationMap = new Map<string, RegExp>([
 	[Algorithm.MD5, /^[a-f0-9]{32}$/],
@@ -47,10 +49,15 @@ export class QueueService {
 
 	constructor(
 		private readonly hashQueue: Array<HashInterface>,
-		private readonly users: Set<string>
+		private readonly users: Set<string>,
+		private readonly cacheRepository: CacheRepositoryInterface
 	) {}
 
-	public initialize(): void {
+	public async initialize(): Promise<void> {
+		if (CLEAR_CACHE_ON_START) {
+			await this.cacheRepository.clearAllCache();
+		}
+
 		socketServer.on("connection", (socket) => {
 			let lifecheck = true;
 			console.log(`new client connection: ${socket.id}`);
@@ -90,7 +97,11 @@ export class QueueService {
 				lifecheck = false;
 				socket.emit("lifecheck");
 				setTimeout(() => {
-					if (!lifecheck && !this.isCalculating) {
+					if (
+						!lifecheck &&
+						!this.isCalculating &&
+						this.currentRound !== null
+					) {
 						console.log(
 							`client inactive - disconnecting: ${socket.id}`
 						);
@@ -113,7 +124,10 @@ export class QueueService {
 			});
 		});
 
-		setInterval(() => {
+		setInterval(async () => {
+			if (this.isCalculating) {
+				return;
+			}
 			const previousDebugLog = this.currentRound?.debugLog;
 			if (this.currentRound === null && this.hashQueue.length > 0) {
 				const hash = this.hashQueue.shift()!;
@@ -133,7 +147,9 @@ export class QueueService {
 					jobs: new Set<Job>(),
 					bruteforceLastArray: EMPTY_BRUTEFORCE_JOB,
 				};
-				this.currentRound.jobs = this.getJobs(hash);
+				this.isCalculating = true;
+				this.currentRound.jobs = await this.getJobs(hash);
+				this.isCalculating = false;
 			} else if (
 				this.currentRound !== null &&
 				!this.users.has(this.currentRound.hash.createdById)
@@ -344,53 +360,84 @@ export class QueueService {
 		this.users.delete(userId);
 	}
 
-	private getJobs(hash: HashInterface): Set<Job> {
+	private async getJobs(hash: HashInterface): Promise<Set<Job>> {
 		// All jobs that need to be done in a round
-		const wordlistJobs = this.getWordlistJobs(hash);
-		const bruteforceJobs = this.getBruteforceJobs(hash);
+		const wordlistJobs = await this.getWordlistJobs(hash);
+		const bruteforceJobs = await this.getBruteforceJobs(hash);
 		const jobs = new Set<Job>();
 		wordlistJobs.forEach((job) => jobs.add(job));
 		bruteforceJobs.forEach((job) => jobs.add(job));
 		return jobs;
 	}
 
-	private getWordlistJobs(hash: HashInterface): Set<Job> {
+	private async getWordlistJobs(hash: HashInterface): Promise<Set<Job>> {
 		const jobs = new Set<Job>();
-		availableWordlists.forEach((wordlistLength, wordlist) => {
-			for (let i = 0; i < wordlistLength; i++) {
-				const wordlistJobInformation = WordlistJobInformation.create(
-					wordlist,
-					i
-				);
-				const job = Job.create({
-					jobHashData: hash,
-					jobInformation: wordlistJobInformation,
-				});
-				jobs.add(job);
-			}
-		});
+		await Promise.all(
+			Array.from(availableWordlists).map(async (val) => {
+				const wordlist = val[0];
+				const wordlistLength = val[1];
+				for (let i = 0; i < wordlistLength; i++) {
+					const jobHash = WordlistJobInformation.calculateJobHash(
+						wordlist,
+						i
+					);
+					const cachedJob = await this.cacheRepository.get(jobHash);
+					if (cachedJob !== null) {
+						jobs.add(cachedJob);
+					} else {
+						const wordlistJobInformation =
+							WordlistJobInformation.create(wordlist, i);
+						const job = Job.create({
+							jobHashData: hash,
+							jobInformation: wordlistJobInformation,
+						});
+						jobs.add(job);
+
+						await this.cacheRepository.set(job);
+					}
+				}
+			})
+		);
 		console.log(
 			`Created ${jobs.size} wordlist jobs for round ${this.roundCounter}`
 		);
 		return jobs;
 	}
 
-	private getBruteforceJobs(hash: HashInterface): Set<Job> {
+	private async getBruteforceJobs(hash: HashInterface): Promise<Set<Job>> {
 		const jobs = new Set<Job>();
 		const startTime = Date.now();
-		this.isCalculating = true;
 		for (let i = 0; i < MAXIMUM_BRUTEFORCE_JOBS_AMOUNT; i++) {
-			const bruteforceJobInformation = BruteforceJobInformation.create(
+			const jobHash = BruteforceJobInformation.calculateJobHash(
 				this.currentRound.bruteforceLastArray,
 				BRUTEFORCE_AMOUNT_PER_JOB
 			);
-			this.currentRound.bruteforceLastArray =
-				bruteforceJobInformation.next;
-			const job = Job.create({
-				jobHashData: hash,
-				jobInformation: bruteforceJobInformation,
-			});
-			jobs.add(job);
+
+			// Cache job mechanisms due to heavy computation
+			const cachedJob = await this.cacheRepository.get(jobHash);
+			if (cachedJob !== null) {
+				this.currentRound.bruteforceLastArray = (
+					cachedJob.jobInformation as BruteforceJobInformation
+				).next;
+				jobs.add(cachedJob);
+			} else {
+				const bruteforceJobInformation =
+					BruteforceJobInformation.create(
+						this.currentRound.bruteforceLastArray,
+						BRUTEFORCE_AMOUNT_PER_JOB
+					);
+
+				this.currentRound.bruteforceLastArray =
+					bruteforceJobInformation.next;
+
+				const job = Job.create({
+					jobHashData: hash,
+					jobInformation: bruteforceJobInformation,
+				});
+				jobs.add(job);
+
+				await this.cacheRepository.set(job);
+			}
 		}
 		if (LOG_LAST_JOB) {
 			console.log(
@@ -403,7 +450,6 @@ export class QueueService {
 				this.roundCounter
 			} - took ${endTime - startTime}ms`
 		);
-		this.isCalculating = false;
 		return jobs;
 	}
 
